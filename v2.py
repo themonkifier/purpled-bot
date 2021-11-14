@@ -1,12 +1,7 @@
 from pyautogui import *
 from PIL import Image
-#import numpy as np
-from time import sleep
-#import random
-#import keyboard
-#import math
+import time
 
-# center of boat is at 9*height/10
 BACKGROUND_COLOR = (149, 191, 219)
 LANE_COLOR = (163, 200, 224)
 DEAD_COLORS = ((30, 38, 44), (12, 13, 18))
@@ -16,76 +11,134 @@ ROCK_COLORS = ((62, 67, 88), (87, 94, 124), (160, 165, 188), (124, 131, 163))
 COLORS = (BACKGROUND_COLOR, LANE_COLOR, DEAD_COLORS, COIN_COLORS, PURPLE_COIN_COLORS, ROCK_COLORS)
 lane = 1
 width, height = size()
-obstacleCheckHeight = 7*height/10
-coinCheckHeight = height/2
-inc = 2
+# center of boat is at 9*height/10
+obstacleCheckHeight = 0.72 * height # should be between 0.6 - 0.75
+coinCheckHeight = 7*height/10 # my favorite number is 72. did you know that?
+inc = 1.5 # tested: 0, 0.5, 1, 1.5, 2, 3, 4
 lastObstaclePixel = BACKGROUND_COLOR
 
-def findObject():
+def findObstacle(lane, mode=0):
+    # returns True if there is a rock, False otherwise
+    global obstacleCheckHeight
+    
+    if not mode:
+        px = readPixel(lane, obstacleCheckHeight)
+        if px in ROCK_COLORS: # rock is in lane i
+            obstacleCheckHeight -= inc
+            return True
+        return False # no rock
+    else:
+        global coinCheckHeight
+        px = readPixel(lane, coinCheckHeight)
+        if px in ROCK_COLORS:
+            obstacleCheckHeight -= inc
+            return True
+    return False
+
+def findCoin():
     global lane
-    global obstacleCheckHeight, inc
+    global coinCheckHeight
+    
     # check lane 0
-    px = readPixel(0)
-    if px in ROCK_COLORS and lane == 0: # avoid rock if in lane 0
-        move("right")
-        obstacleCheckHeight -= inc
-        print("Obstacle check height: {}".format(obstacleCheckHeight))
+    px = readPixel(0, coinCheckHeight)
+    if (px in COIN_COLORS or px in PURPLE_COIN_COLORS) and not findObstacle(0, 1): # found coin or purple coin (doesn't really matter)
+        if lane == 0:
+            pass # no movement necessary
+        elif lane == 1:
+            move("left")
+        elif lane == 2 and px in PURPLE_COIN_COLORS:
+            move("left", 2)
+        """elif px in PURPLE_COIN_COLORS:
+            move("left", 3)""" # moving over three lanes doesn't really work
+        return 0
     
     # check lane 1
-    px = readPixel(1)
-    if px in ROCK_COLORS and lane == 1: # avoid rock if in lane 1
-        move("right")
-        obstacleCheckHeight -= inc
-        print("Obstacle check height: {}".format(obstacleCheckHeight))
+    px = readPixel(1, coinCheckHeight)
+    if (px in COIN_COLORS or px in PURPLE_COIN_COLORS) and not findObstacle(1, 1):
+        if lane == 0:
+            move("right")
+        elif lane == 1:
+            pass # no movement necessary
+        elif lane == 2:
+            move("left")
+        elif px in PURPLE_COIN_COLORS:
+            move("left", 2)
+        return 1
     
     # check lane 2
-    px = readPixel(2)
-    if px in ROCK_COLORS and lane == 2: # avoid rock if in lane 2
-        move("right")
-        obstacleCheckHeight -= inc
-        print("Obstacle check height: {}".format(obstacleCheckHeight))
+    px = readPixel(2, coinCheckHeight)
+    if (px in COIN_COLORS or px in PURPLE_COIN_COLORS) and not findObstacle(2, 1):
+        if lane == 0 and px in PURPLE_COIN_COLORS:
+            move("right", 2)
+        elif lane == 1:
+            move("right")
+        elif lane == 2:
+            pass # no movement necessary
+        elif lane == 3:
+            move("left")
+        return 2
     
     # check lane 3
-    px = readPixel(3)
-    if px in ROCK_COLORS and lane == 3: # avoid rock if in lane 3
-        move("left")
-        obstacleCheckHeight -= inc
-        print("Obstacle check height: {}".format(obstacleCheckHeight))
-
-def readPixel(readLane):
-    global obstacleCheckHeight, coinCheckHeight
-    global lastObstaclePixel
-    obstacleCheckHeightInt, coinCheckHeightInt = int(obstacleCheckHeight), int(coinCheckHeight)
-    if readLane == 0:
-        obstaclePixel = pixel(int(width/2 - 342), obstacleCheckHeightInt)
-    elif readLane == 1:
-        obstaclePixel = pixel(int(width/2 - 114), obstacleCheckHeightInt)
-    elif readLane == 2:
-        obstaclePixel = pixel(int(width/2 + 114), obstacleCheckHeightInt)
-    else:
-        obstaclePixel = pixel(int(width/2 + 342), obstacleCheckHeightInt)
+    px = readPixel(3, coinCheckHeight)
+    if (px in COIN_COLORS or px in PURPLE_COIN_COLORS) and not findObstacle(3, 1):
+        """if lane == 0 and px in PURPLE_COIN_COLORS:
+            move("right", 3)"""
+        if lane == 1 and px in PURPLE_COIN_COLORS:
+            move("right", 2)
+        elif lane == 2:
+            move("right")
+        elif lane == 3:
+            pass # no movement necessary
+        return 3
     
-    if obstaclePixel != lastObstaclePixel and obstaclePixel not in COLORS:
+    # end script if you die - this function gets called the least
+    if px in DEAD_COLORS:
+        raise KeyboardInterrupt
+    return -1
+
+def readPixel(lane, checkHeight):
+    global lastObstaclePixel
+    checkHeightInt = int(checkHeight)
+    
+    if lane == 0:
+        obstaclePixel = pixel(int(width/2 - 342), checkHeightInt)
+    elif lane == 1:
+        obstaclePixel = pixel(int(width/2 - 114), checkHeightInt)
+    elif lane == 2:
+        obstaclePixel = pixel(int(width/2 + 114), checkHeightInt)
+    else:
+        obstaclePixel = pixel(int(width/2 + 342), checkHeightInt)
+    """
+    if (obstaclePixel != lastObstaclePixel) and (obstaclePixel not in COLORS):
         print(obstaclePixel)
     lastObstaclePixel = obstaclePixel
+    """
     return obstaclePixel
 
-def move(direction="left"):
+def move(direction="left", distance=1):
     global lane
-    if direction == "right":
-        keyDown("d")
-        print("\nObstacle in lane {}".format(lane))
-        lane += 1
-        print("Currently in lane {}".format(lane))
-        keyUp("d")
-    else:
-        keyDown("a")
-        print("\nObstacle in lane {}".format(lane))
-        lane -= 1
-        print("Currently in lane {}".format(lane))
-        keyUp("a")
+    
+    for i in range(distance):
+        if direction == "right":
+            keyDown("d")
+            lane += 1
+            #print("Currently in lane {}".format(lane))
+            keyUp("d")
+        else:
+            keyDown("a")
+            lane -= 1
+            #print("Currently in lane {}".format(lane))
+            keyUp("a")
+
+
 try:
     while True:
-        findObject()
+        if findObstacle(lane):
+            if lane <= 1:
+                move("right")
+            else:
+                move()
+        else:
+            findCoin()
 except KeyboardInterrupt:
         pass
