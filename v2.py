@@ -116,6 +116,15 @@ def changeCheckHeight():
     elif START_TIME[1] == 3 and time.time() - START_TIME[0] >= 40:
         inc += 2
         START_TIME[1] += 1
+    elif START_TIME[1] == 4 and time.time() - START_TIME[0] >= 50:
+        inc += 3
+        START_TIME[1] += 1
+    elif START_TIME[1] == 5 and time.time() - START_TIME[0] >= 70:
+        inc += 2
+        START_TIME[1] += 1
+    elif START_TIME[1] == 6 and time.time() - START_TIME[0] >= 80:
+        inc += 3
+        START_TIME[1] += 1
     
     obstacleCheckHeight -= inc
     print(inc)
